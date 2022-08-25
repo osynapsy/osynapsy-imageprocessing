@@ -1,0 +1,25 @@
+{
+    "name": "osynapsy.net/osynapsy-imageprocessing",
+    "version": "0.1",
+    "homepage": "http://www.osynapsy.net/image",
+    "type": "library",
+    "description": "Osynapsy image tratament utilities",
+    "keywords": ["Osynapsy", "Image processing library"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Pietro Celeste",
+            "email": "p.celeste@osynapsy.net",
+            "homepage": "https://github.com/osynapsy/osynapsy-imageprocessing/wiki"
+        }
+    ],
+    "require": {
+        "php" : ">=7.2.0",
+        "ext-gd" : "*"
+    },
+    "autoload" : {
+        "psr-4": {
+            "Osynapsy\\ImageProcessing\\": "src/Osynapsy/ImageProcessing/"
+        }
+    }
+}
