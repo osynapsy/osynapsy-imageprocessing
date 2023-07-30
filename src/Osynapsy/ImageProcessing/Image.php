@@ -42,7 +42,7 @@ class Image
         if (!array_key_exists($info[2], self::IMAGE_FACTORY)) {
             throw new \Exception("Image type not allowed");
         }
-        $factoryFunction = self::IMAGE_TYPE_FACTORY[$info[2]];
+        $factoryFunction = self::IMAGE_FACTORY[$info[2]];
         $image = $factoryFunction($path);
         return [$image, $info];
     }

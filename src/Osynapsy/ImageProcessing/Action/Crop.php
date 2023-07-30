@@ -12,71 +12,59 @@
 namespace Osynapsy\ImageProcessing\Action;
 
 use Osynapsy\ImageProcessing\Image;
+use Osynapsy\Action\AbstractAction;
+use Osynapsy\Http\Response\JsonOsynapsy;
 
 /**
  * Description of CropTrait
  *
  * @author Pietro Celeste <p.celeste@osynapsy.net>
  */
-class Crop
+class Crop extends AbstractAction
 {
-    private $db;
-    private $table;
-    private $field;
-    private $where;
-    private $targetFile;
-    private $pathinfo = [];
-
-    public function __construct($db, $table, $field, array $where)
+    public function execute(JsonOsynapsy $Response, $imageUrl, $cropData, $resizeData, $fieldId, $fieldToRefreshId)
     {
-        $this->db = $db;
-        $this->table = $table;
-        $this->field = $field;
-        $this->where = $where;
-        $this->targetFile = $this->db->selectOne($table, $where, [$field], \PDO::FETCH_NUM);
-        if (empty($this->targetFile)) {
-            return;
+        try {
+            $filename = $this->getFilepathFromUrl($imageUrl);
+            $documentRoot = $_SERVER['DOCUMENT_ROOT'];
+            $Img = new Image($documentRoot.$filename);
+            $this->crop($Img, $cropData);
+            if (!empty($resizeData)) {
+                $this->resize($Img, $resizeData);
+            }
+            $newFilename = $this->buildFilename($filename);
+            $Img->save($documentRoot.$newFilename);
+            $Response->js(sprintf("document.getElementById('%s').value = '%s'", $fieldId, $newFilename));
+            $Response->refreshComponents([$fieldToRefreshId]);
+        } catch (\Exception $e) {
+            return $e->getMessage();
         }
-        $this->pathinfo = pathinfo($this->targetFile);
     }
 
-    public function cropAction($cropWidth, $cropHeight, $cropX, $cropY, $filename, $newWidth = null, $newHeight = null)
+    protected function getFilepathFromUrl($imageUrl)
     {
-        $img = new Image('.'.$this->targetFile);
-        $img->crop($cropX, $cropY, $cropWidth, $cropHeight);
-        if (!empty($filename) && $filename[0] !== '/') {
-            $filename = $this->pathinfo['dirname'].'/'.$filename.'.'.$this->pathinfo['extension'];
-        }
-        if (!empty($newWidth) && !empty($newHeight)) {
-            $img->resize($newWidth, $newHeight);
-        }
-        $img->save('.'.$filename);
-        $this->updateRecord($filename);
+        $urlPart = parse_url($imageUrl);
+        return $urlPart['path'];
     }
 
-    public function deleteImageAction()
+    protected function crop($imageHandler, $cropData)
     {
-        if (empty($this->targetFile)) {
-            return;
-        }
-        unlink('.'.$this->targetFile);
-        $this->updateRecord(null);
+        list($cropWidth, $cropHeight, $cropX, $cropY) = explode(',', base64_decode($cropData));
+        $imageHandler->crop($cropX, $cropY, $cropWidth, $cropHeight);
     }
 
-    public function updateRecord($filename)
+    protected function resize($imageHandler, $resizeData)
     {
-        $this->db->update($this->table, [$this->field => $filename], $this->where);
+        list($newWidth, $newHeight) = explode(',', base64_decode($resizeData));
+        $imageHandler->resize($newWidth, $newHeight);
     }
 
-    public function getTarget()
+    protected function buildFilename($original)
     {
-        return $this->targetFile;
-    }
-
-    public function getInfo($key)
-    {
-        if (array_key_exists($key, $this->pathinfo)) {
-            return $this->pathinfo[$key];
-        }
+        $pathinfo = pathinfo($original);
+        $path = $pathinfo['dirname'];
+        $filename = $pathinfo['filename'];
+        $extension = $pathinfo['extension'];
+        return $path . '/' . $filename . '.crop.' . $extension;
     }
 }
